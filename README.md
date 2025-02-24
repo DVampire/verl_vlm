@@ -1,4 +1,5 @@
 # VERL_VLM
+The vlm version of verl, which currently only supports Qwen 2.5-VL.
 
 # Installation
 ```bash
