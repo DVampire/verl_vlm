@@ -1,6 +1,6 @@
 set -x
 
-export HOME=/path/to/verl_vllm
+export HOME=/path/to/verl_vlm
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export HYDRA_FULL_ERROR=1
 export WANDB_API_KEY="your_wandb_api_key"
