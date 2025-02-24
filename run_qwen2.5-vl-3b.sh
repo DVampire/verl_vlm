@@ -1,6 +1,6 @@
 set -x
 
-export HOME=/mnt/2050data/wentao.zhang/MultiModalMath
+export HOME=/mnt/2050data/wentao.zhang/verl_vlm
 export VLLM_ATTENTION_BACKEND=XFORMERS
 export HYDRA_FULL_ERROR=1
 export WANDB_API_KEY=4025943f5c98398d235eae04243f882b45bcd591
