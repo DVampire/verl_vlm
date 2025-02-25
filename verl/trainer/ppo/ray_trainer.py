@@ -516,7 +516,7 @@ class RayPPOTrainer(object):
                                          filter_prompts=True,
                                          chat_template_func=_chat_template_func,
                                          return_raw_chat=self.config.data.get('return_raw_chat', False),
-                                         truncation='do_not_truncate')
+                                         truncation='error')
 
         # use sampler for better ckpt resume
         if self.config.data.shuffle:

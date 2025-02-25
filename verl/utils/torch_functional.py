@@ -276,12 +276,11 @@ def tokenize_and_postprocess_data(chat: List[Dict[str, Any]],
             text=[text],
             images=image_inputs,
             videos=video_inputs,
-            padding=True,
             return_tensors="pt",
         )
     else:
         text = tokenizer.apply_chat_template(chat, add_generation_prompt=True, tokenize=False)
-        input_data = tokenizer(text, padding=True, return_tensors="pt", truncation=truncation, max_length=max_length)
+        input_data = tokenizer(text, return_tensors="pt", add_special_tokens=False)
 
     input_ids = input_data['input_ids']
     attention_mask = input_data['attention_mask']
