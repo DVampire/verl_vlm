@@ -25,6 +25,7 @@ from pprint import pprint
 from typing import Type, Dict, List, Any
 from copy import deepcopy
 import base64
+from io import BytesIO
 
 import numpy as np
 from codetiming import Timer
@@ -172,6 +173,18 @@ def compute_advantage(data: DataProto, adv_estimator, gamma=1.0, lam=1.0, num_re
 
         data.batch['advantages'] = advantages
         data.batch['returns'] = returns
+    elif adv_estimator == 'rloo':
+        token_level_rewards = data.batch['token_level_rewards']
+        index = data.non_tensor_batch['uid']
+        responses = data.batch['responses']
+        response_length = responses.size(-1)
+        attention_mask = data.batch['attention_mask']
+        response_mask = attention_mask[:, -response_length:]
+        advantages, returns = core_algos.compute_rloo_outcome_advantage(token_level_rewards=token_level_rewards,
+                                                                        eos_mask=response_mask,
+                                                                        index=index)
+        data.batch['advantages'] = advantages
+        data.batch['returns'] = returns
     else:
         raise NotImplementedError
     return data
@@ -212,10 +225,10 @@ def _chat_template_func(messages):
             converted_content: List[Dict[str, Any]] = []
             for item in content:
                 if item['type'] == 'image':
-                    image = base64.b64encode(item['image']['bytes']).decode('utf-8')
+                    img_base64 = base64.b64encode(item['image']['bytes']).decode('utf-8')
                     new_item = {
                         "type": "image",
-                        "image": "data:image;base64," + image
+                        "image": "data:image/png;base64," + img_base64
                     }
                     converted_content.append(new_item)
                 elif item['type'] == 'text':
@@ -400,11 +413,7 @@ class RayPPOTrainer(object):
 
         if self.config.algorithm.adv_estimator == 'gae':
             self.use_critic = True
-        elif self.config.algorithm.adv_estimator == 'grpo':
-            self.use_critic = False
-        elif self.config.algorithm.adv_estimator == 'reinforce_plus_plus':
-            self.use_critic = False
-        elif self.config.algorithm.adv_estimator == 'remax':
+        elif self.config.algorithm.adv_estimator in ['grpo', 'reinforce_plus_plus', 'remax', 'rloo']:
             self.use_critic = False
         else:
             raise NotImplementedError
@@ -489,6 +498,11 @@ class RayPPOTrainer(object):
                 assert config.critic.model.use_remove_padding, \
                     "When using sequence parallelism for critic, you must enable `use_remove_padding`."
 
+        if config.data.get('val_batch_size', None) is not None:
+            print(
+                f"WARNING: val_batch_size is deprecated. Validation datasets are sent to inference engines as a whole batch, which will schedule the memory themselves."
+            )
+
         print("[validate_config] All configuration checks passed successfully!")
 
     def _create_dataloader(self):
@@ -502,7 +516,7 @@ class RayPPOTrainer(object):
                                          filter_prompts=True,
                                          chat_template_func=_chat_template_func,
                                          return_raw_chat=self.config.data.get('return_raw_chat', False),
-                                         truncation='error')
+                                         truncation='do_not_truncate')
 
         # use sampler for better ckpt resume
         if self.config.data.shuffle:
@@ -525,12 +539,15 @@ class RayPPOTrainer(object):
                                        max_prompt_length=self.config.data.max_prompt_length,
                                        filter_prompts=True,
                                        return_raw_chat=self.config.data.get('return_raw_chat', False),
-                                       truncation='error')
-        self.val_dataloader = DataLoader(dataset=self.val_dataset,
-                                         batch_size=len(self.val_dataset),
-                                         shuffle=True,
-                                         drop_last=True,
-                                         collate_fn=collate_fn)
+                                       truncation='do_not_truncate')
+        self.val_dataloader = DataLoader(
+            dataset=self.val_dataset,
+            # Validation datasets are sent to inference engines as a whole batch,
+            # which will schedule the memory themselves.
+            batch_size=len(self.val_dataset),
+            shuffle=True,
+            drop_last=False,
+            collate_fn=collate_fn)
 
         assert len(self.train_dataloader) >= 1
         assert len(self.val_dataloader) >= 1

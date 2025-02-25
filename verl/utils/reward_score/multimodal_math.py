@@ -14,30 +14,54 @@
 
 import re
 
+def parse(answer: str) -> str:
+    answer = str(answer)
+
+    res_str = ""
+    try:
+        float(answer)
+        res_str = answer
+    except Exception as e:
+
+        answer = answer.replace("<|im_end|>", "").strip()
+
+        # match `A. balabala B. balabala`
+        pattern = r'(?<!\w)([A-F])(?=\s|[.)\,]|$)(?:[.)\,]?\s*)(.*?)(?=[\s,]*[A-F](?:[.)\,]?\s*)|$)'
+        matches = re.findall(pattern, answer, re.DOTALL)
+        if matches:
+            options = {key: value.strip() for key, value in matches}
+            option_keys = list(sorted(list(options.keys())))
+            res_str = ",".join(option_keys)
+        else:
+            # match `120`, `120.3`, `120e3`, `120F`
+            pattern = r"([+\-]?\d+(?:\.\d+)?(?:[eE][+\-]?\d+)?[A-Za-z]*)"
+            matches = re.findall(pattern, answer)
+            if matches:
+                res_str = matches[0]
+            else:
+                res_str = answer
+    return res_str
+
+def verify(answer: str, method = "strict") -> bool:
+    if method == "strict":
+        pattern = r"^(?:([A-Z](?:,[A-Z])*)|((?:\d+\.\d+|\.\d+|\d+|[+-]?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)(?:[A-Za-z]+)?))$"
+        match = re.fullmatch(pattern, answer)
+        if match:
+            return True
+        else:
+            return False
+    elif method == "flexible":
+        raise NotImplementedError
 
 def extract_solution(solution_str, method='strict'):
-    assert method in ['strict', 'flexible']
-
-    if method == 'strict':
-        # this also tests the formatting of the model
-        solution = re.search("#### (\\-?[0-9\\.\\,]+)", solution_str)
-        if solution is None:
-            final_answer = None
-        else:
-            final_answer = solution.group(0)
-            final_answer = final_answer.split('#### ')[1].replace(',', '').replace('$', '')
-    elif method == 'flexible':
-        answer = re.findall("(\\-?[0-9\\.\\,]+)", solution_str)
+    # this also tests the formatting of the model
+    solution = re.search(r"####\s+(.+)", solution_str, re.DOTALL)
+    if solution is None:
         final_answer = None
-        if len(answer) == 0:
-            # no reward is there is no answer
-            pass
-        else:
-            invalid_str = ['', '.']
-            # find the last number that is not '.'
-            for final_answer in reversed(answer):
-                if final_answer not in invalid_str:
-                    break
+    else:
+        final_answer = solution.group(0)
+        final_answer = final_answer.replace("####", "").replace("$", "").strip()
+        final_answer = parse(final_answer)
     return final_answer
 
 
@@ -54,6 +78,13 @@ def compute_score(solution_str, ground_truth, method='strict', format_score=0., 
         score: the score for the correct answer
     """
     answer = extract_solution(solution_str=solution_str, method=method)
+
+    print("-" * 100)
+    print("solution_str:", solution_str)
+    print("ground_truth:", ground_truth)
+    print("parse answer:", answer)
+    print("-" * 100)
+
     if answer is None:
         return 0
     else:

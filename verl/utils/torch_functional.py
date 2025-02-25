@@ -267,7 +267,6 @@ def tokenize_and_postprocess_data(chat: List[Dict[str, Any]],
     """
     input_data is the output from tokenizer.
     """
-    assert truncation in ['left', 'right', 'error']
 
     if processor:
         text = processor.apply_chat_template(chat, add_generation_prompt=True, tokenize=False)

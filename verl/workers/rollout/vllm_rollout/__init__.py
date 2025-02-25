@@ -25,6 +25,7 @@ def get_version(pkg):
 package_name = 'vllm'
 package_version = get_version(package_name)
 
+# if package_version <= '0.6.3' or package_version.startswith('0.7.4'):
 if package_version <= '0.6.3':
     vllm_mode = 'customized'
     from .vllm_rollout import vLLMRollout

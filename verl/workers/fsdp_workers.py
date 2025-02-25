@@ -147,7 +147,7 @@ class ActorRolloutRefWorker(Worker):
                                role='actor'):
         from verl.utils.model import print_model_size, update_model_config, get_generation_config
         from verl.utils.torch_dtypes import PrecisionType
-        from transformers import AutoModelForCausalLM, AutoConfig, Qwen2_5_VLForConditionalGeneration
+        from transformers import AutoModelForCausalLM, AutoConfig, AutoModelForVision2Seq
         from torch.distributed.fsdp import FullyShardedDataParallel as FSDP, ShardingStrategy, MixedPrecision, CPUOffload
         from torch import optim
 
@@ -194,11 +194,17 @@ class ActorRolloutRefWorker(Worker):
 
         with init_context(), warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            actor_module = Qwen2_5_VLForConditionalGeneration.from_pretrained(pretrained_model_name_or_path=local_path,
-                                                                torch_dtype=torch_dtype,
-                                                                config=actor_model_config,
-                                                                attn_implementation='flash_attention_2',
-                                                                trust_remote_code=trust_remote_code)
+
+            if type(actor_model_config) in AutoModelForVision2Seq._model_mapping.keys():
+                auto_class = AutoModelForVision2Seq
+            else:
+                auto_class = AutoModelForCausalLM
+
+            actor_module = auto_class.from_pretrained(pretrained_model_name_or_path=local_path,
+                                                      torch_dtype=torch_dtype,
+                                                      config=actor_model_config,
+                                                      attn_implementation='flash_attention_2',
+                                                      trust_remote_code=trust_remote_code)
             # Apply Liger kernel to the model if use_liger is set to True
             if use_liger:
                 from liger_kernel.transformers.monkey_patch import _apply_liger_kernel_to_instance

@@ -10,7 +10,7 @@ conda activate verl
 # prepare environment
 cd $HOME
 #pip install -e .
-#pip3 install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+#pip3 install vllm==0.7.3 # must be v0.7.3
 #pip3 install --use-pep517 flash-attn --no-build-isolation
 #pip install torch==2.5.1 torchvision==0.20.1 torchaudio==2.5.1 --index-url https://download.pytorch.org/whl/cu124
 

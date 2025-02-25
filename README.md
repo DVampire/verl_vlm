@@ -10,7 +10,7 @@ pip3 install -e .
 
 # Install vLLM>=0.7
 pip3 uninstall vllm
-pip3 install vllm --pre --extra-index-url https://wheels.vllm.ai/nightly
+pip3 install vllm==0.7.3 # must be v0.7.3
 
 # Install flash-attn
 pip3 install --use-pep517 flash-attn --no-build-isolation
